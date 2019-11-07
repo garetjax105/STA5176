@@ -1,0 +1,18 @@
+---
+title: "Untitled"
+author: "Justin Kralick"
+date: "November 7, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+setwd("N:/30000/30000/Credit Policy/Justin K/Statistical modeling") ##change the path to your working directory - shortcut ctrl+shift+h
+data_cleaned <- read.csv('data_cleaned.csv', stringsAsFactors = F)
+```
+
+
