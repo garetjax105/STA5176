@@ -1,0 +1,98 @@
+---
+title: "Untitled"
+author: "Justin Kralick"
+date: "November 7, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(pscl)
+library(ROCR)
+
+p.value.string = function(p.value){
+  p.value <- round(p.value, digits=4)
+  if (p.value == 0) {
+    return("p < 0.0001")
+  } else {
+    return(paste0("p = ", format(p.value, scientific = F)))
+  }
+}
+
+setwd("N:/30000/30000/Credit Policy/Justin K/Statistical modeling") ##change the path to your working directory - shortcut ctrl+shift+h
+```
+
+
+```{r}
+#import data
+data_cleaned <- read.csv('data_cleaned.csv', stringsAsFactors = F)
+
+#select variables to consider in model:
+data <- tibble(default = data_cleaned$SeriousDlqin2yrs, util = data_cleaned$RevolvingUtilizationOfUnsecuredLines, debtratio = data_cleaned$DebtRatio, income = data_cleaned$MonthlyIncome)
+
+
+
+#Split data into train (70%) and test (30%) sets:
+smp_size <- floor(0.7 * nrow(data))
+set.seed(123) ## set the seed to make partition reproducible
+train_ind <- sample(seq_len(nrow(data)), size = smp_size)
+train <- data[train_ind, ]
+test <- data[-train_ind, ]
+
+```
+
+
+```{r}
+#fit model, default is our binary response variable measured against the other three variables
+
+model <- glm(default ~ ., data = train, family = binomial)
+
+summary(model)
+```
+
+
+All variables are statistically significant.  Income is negative indicating that the higher the income, the less likely to default.  Util and debtratio are positive indicating that the higher the debtratio and the credit utilization, the more likely someone is to default.  This is as expected.
+
+```{r}
+
+anova(model, test= "Chisq")
+pR2(model)
+```
+
+The difference between the deviance and the residual deviance shows how our model is doing against the null model (model with only intercept). The wider this gap, the better. Analyzing the table we can see the drop in deviance when adding each variable one at a time.
+
+To test the accuracy we will use the test data set.
+R will output probabilities in the form of P(y=1|X). Our decision boundary will be 0.5. If P(y=1|X) > 0.5 then y = 1 otherwise y = 0.
+
+```{r}
+
+fitted.results <- predict(model,newdata=test,type='response')
+fitted.results <- ifelse(fitted.results > 0.5,1,0)
+
+misClasificError <- mean(fitted.results != test$default)
+print(paste('Accuracy',1-misClasificError))
+```
+
+The accuracy is `r round(1-misClasificError, digits = 3)` This is a pretty high Accuracy.
+
+Finally, we are going to plot the ROC curve and calculate the area under the curve which are typical performance measurements for logistic.
+A model with good predictive ability should have an AUC closer to 1 than to 0.5.
+
+```{r}
+p <- predict(model, newdata=test, type="response")
+pr <- prediction(p, test$default)
+prf <- performance(pr, measure = "tpr", x.measure = "fpr")
+plot(prf)
+
+auc <- performance(pr, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+```
+
+
+
+```{r sessionInfo, include=TRUE, echo=TRUE, results='markup'}
+sessionInfo()
+```
